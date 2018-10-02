@@ -156,7 +156,7 @@ function ranges:cursor(n)
 	local offsets = self.offsets
 	local lengths = self.lengths
 
-	local i, k, next_on_i, next_off_i --cursor state
+	local i, inside, k, next_on_i, next_off_i --cursor state
 
 	local function seek(_, target_i)
 		local inside, k1 = self:hit_test(target_i)
@@ -172,26 +172,31 @@ function ranges:cursor(n)
 		end
 		i = i + 1
 		if not next_on_i then --after last range
-			return i, false
+			inside = false
 		elseif i < next_on_i then --before next range
-			return i, false
+			inside = false
 		elseif i < next_off_i then --inside range
-			return i, true
+			inside = true
 		else --end-of-range, load next range
 			k = k + 1
 			next_on_i = offsets[k]
 			next_off_i = next_on_i and next_on_i + lengths[k]
 			--there should be no glued ranges
 			assert(not next_on_i or next_on_i > i)
-			return i, false
+			inside = false
 		end
+		return i, inside
 	end
 
 	local function hit_test(_, target_i)
-		if not i or i + 1 ~= target_i then
+		if target_i == i then
+			--`inside` already loaded
+		elseif target_i - 1 == i then
+			next()
+		else
 			seek(_, target_i)
+			next()
 		end
-		local _, inside = next()
 		return inside
 	end
 
